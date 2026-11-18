@@ -93,7 +93,7 @@ Run the full preflight script:
 ## Quick Start
 
 ```bash
-git clone https://github.com/YOURNAME/java4shell-poc.git
+git clone https://github.com/fumioryoto/java4shell-poc.git
 cd java4shell-poc
 
 # 1. Environment checks
@@ -277,7 +277,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md). In short:
 
 ```
 java4shell-poc: Bounded local reproduction of CVE-2026-114938.
-GitHub: YOURNAME/java4shell-poc, v1.0.0.
+GitHub: fumioryoto/java4shell-poc, v1.0.0.
 ```
 
 ---

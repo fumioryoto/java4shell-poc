@@ -1,0 +1,83 @@
+title: Java4Shell (CVE-2026-114938) — JVM Crash and Log Indicators
+id: 8f2f3b1e-0000-4000-a000-java4shell001
+name: java4shell_cve_2026_114938
+status: experimental
+description: >
+  Detects JVM crash logs (hs_err_pid*.log) and application log entries
+  consistent with the Base64 AVX-512 heap overflow in CVE-2026-114938.
+  A vulnerable JVM may crash with SIGSEGV or SIGBUS in the Base64 decoder
+  code path, producing an hs_err crash dump.
+author: nullkitsune (Md. Nahidul Islam)
+date: 2026/11/18
+modified: 2026/11/18
+references:
+  - https://nvd.nist.gov/vuln/detail/CVE-2026-114938
+  - https://github.com/YOURNAME/java4shell-poc
+tags:
+  - attack.execution
+  - attack.t1203
+  - cve.2026-114938
+
+---
+# Rule 1: JVM crash file created with hs_err prefix
+title: JVM Crash File Created — Possible Java4Shell (CVE-2026-114938)
+id: 8f2f3b1e-0001-4000-a000-java4shell001
+status: experimental
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection:
+    TargetFilename|endswith: 'hs_err_pid.log'
+    TargetFilename|contains: 'hs_err_pid'
+  condition: selection
+falsepositives:
+  - Benign JVM crashes from unrelated native code, OOM, or misconfigurations
+level: medium
+
+---
+# Rule 2: Base64 IllegalArgumentException in application logs
+title: Suspicious Base64 Decode Exception in JVM Application — Java4Shell Heuristic
+id: 8f2f3b1e-0002-4000-a000-java4shell002
+status: experimental
+logsource:
+  product: java
+  category: application
+detection:
+  selection_exception:
+    - EventData|contains: 'IllegalArgumentException'
+    - EventData|contains: 'java.util.Base64'
+  selection_decoder:
+    EventData|contains|all:
+      - 'Base64'
+      - 'decode'
+  condition: selection_exception and selection_decoder
+falsepositives:
+  - Legitimate application Base64 decode errors from malformed user input
+level: low
+
+---
+# Rule 3: JVM crash log content — SIGSEGV in Base64 frame
+title: JVM Crash Log References Base64 or AVX-512 — Java4Shell (CVE-2026-114938)
+id: 8f2f3b1e-0003-4000-a000-java4shell003
+status: experimental
+description: >
+  Triggers when a JVM crash log (hs_err_pid.log) contains both a SIGSEGV
+  signal and a reference to Base64 or AVX-512 in the problematic frame.
+  This is a strong indicator that the crash was caused by CVE-2026-114938.
+logsource:
+  product: linux
+  service: syslog
+detection:
+  selection_signal:
+    - message|contains: 'SIGSEGV'
+    - message|contains: 'SIGBUS'
+  selection_frame:
+    - message|contains: 'Base64'
+    - message|contains: 'UseBASE64Intrinsics'
+    - message|contains: 'avx512'
+    - message|contains: 'vbmi'
+  condition: selection_signal and selection_frame
+falsepositives:
+  - Other JVM memory errors that happen to reference Base64 in a stack frame
+level: high

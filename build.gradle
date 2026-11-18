@@ -1,0 +1,57 @@
+plugins {
+    id 'application'
+    id 'java'
+}
+
+group = 'com.example'
+version = '1.0.0'
+
+java {
+    toolchain {
+        // Compile with a modern JDK; run with the pinned vulnerable build
+        // set via JAVA_HOME in scripts/run-poc.sh.
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+application {
+    mainClass = 'com.example.java4shell.Main'
+}
+
+// Vulnerable run — uses whatever JAVA_HOME / runtime the user has configured.
+tasks.named('run', JavaExec) {
+    description = 'Run the PoC on the currently configured JVM.'
+}
+
+// Mitigated negative control — disables the AVX-512 VBMI intrinsic.
+tasks.register('runMitigated', JavaExec) {
+    group = 'verification'
+    description = 'Run the PoC with the AVX-512 Base64 intrinsic disabled (negative control).'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.java4shell.Main'
+    jvmArgs = ['-XX:-UseBASE64Intrinsics']
+}
+
+// Alternative mitigation — cap AVX level.
+tasks.register('runAvx2', JavaExec) {
+    group = 'verification'
+    description = 'Run the PoC with AVX capped at level 2 (alternative mitigation).'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.java4shell.Main'
+    jvmArgs = ['-XX:UseAVX=2']
+}
+
+// Compile only — useful for CI and syntax checking.
+tasks.named('compileJava') {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-Xlint:all' << '-Xlint:-processing'
+}
+
+// Suppress test requirement in CI contexts.
+tasks.named('test') {
+    enabled = false
+}

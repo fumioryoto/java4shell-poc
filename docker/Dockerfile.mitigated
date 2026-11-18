@@ -1,0 +1,33 @@
+# Dockerfile.mitigated
+#
+# Same vulnerable JDK image as Dockerfile.vulnerable, but the AVX-512 Base64
+# intrinsic is disabled at runtime via -XX:-UseBASE64Intrinsics.
+#
+# This is the negative control. It should ALWAYS report NOT VULNERABLE.
+# If it reports VULNERABLE, check that the flag is being passed correctly.
+
+FROM eclipse-temurin:21.0.13_9-jdk AS builder
+
+WORKDIR /poc
+COPY src ./src
+
+RUN mkdir -p build/classes && \
+    javac -encoding UTF-8 -d build/classes \
+      src/main/java/com/example/java4shell/Base64Trigger.java \
+      src/main/java/com/example/java4shell/Main.java
+
+FROM eclipse-temurin:21.0.13_9-jre
+
+LABEL org.opencontainers.image.title="java4shell-poc (mitigated)" \
+      org.opencontainers.image.description="Bounded CVE-2026-114938 reproducer — mitigated (negative control)" \
+      org.opencontainers.image.licenses="MIT"
+
+WORKDIR /poc
+COPY --from=builder /poc/build/classes ./build/classes
+COPY DISCLAIMER.md ./
+
+# Disable the AVX-512 VBMI-accelerated Base64 decoder.
+# This is one of the documented mitigations for CVE-2026-114938.
+ENTRYPOINT ["java", "-XX:-UseBASE64Intrinsics", \
+            "-cp", "build/classes", \
+            "com.example.java4shell.Main"]

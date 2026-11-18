@@ -1,0 +1,44 @@
+# Dockerfile.vulnerable
+#
+# Builds the PoC inside a pinned vulnerable Eclipse Temurin JDK image.
+#
+# IMPORTANT: Replace the FROM tag with the exact vulnerable build you have
+# verified against the CVE advisory. Do NOT use 'latest' — pin to a specific
+# version.
+#
+# To build and run:
+#   docker compose -f docker/docker-compose.yml up vulnerable
+#
+# Note: AVX-512 intrinsics are CPU features, not JVM flags.
+# The container inherits the host CPU. If your host CPU does not expose
+# avx512f / avx512bw / avx512vbmi / bmi2, the PoC will correctly report
+# NOT VULNERABLE inside the container.
+
+FROM eclipse-temurin:21.0.13_9-jdk AS builder
+
+WORKDIR /poc
+
+# Copy source
+COPY src ./src
+
+# Compile (no Gradle needed for the bare PoC)
+RUN mkdir -p build/classes && \
+    javac -encoding UTF-8 -d build/classes \
+      src/main/java/com/example/java4shell/Base64Trigger.java \
+      src/main/java/com/example/java4shell/Main.java
+
+# ---- Runtime stage ----
+FROM eclipse-temurin:21.0.13_9-jre
+
+LABEL org.opencontainers.image.title="java4shell-poc (vulnerable)" \
+      org.opencontainers.image.description="Bounded CVE-2026-114938 reproducer — vulnerable JDK" \
+      org.opencontainers.image.licenses="MIT"
+
+WORKDIR /poc
+COPY --from=builder /poc/build/classes ./build/classes
+COPY DISCLAIMER.md ./
+
+# No network access needed
+EXPOSE 0
+
+ENTRYPOINT ["java", "-cp", "build/classes", "com.example.java4shell.Main"]

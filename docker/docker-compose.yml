@@ -1,0 +1,24 @@
+services:
+
+  vulnerable:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.vulnerable
+    # Completely isolated — no network, no volumes, no ports.
+    network_mode: "none"
+    # Allow JVM crash logs to be inspected on the host (optional).
+    # Uncomment the lines below to mount a local directory for crash dumps.
+    # volumes:
+    #   - ./crash-logs:/poc/crash-logs
+    restart: "no"
+
+  mitigated:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.mitigated
+    network_mode: "none"
+    restart: "no"
+
+# Run both: docker compose -f docker/docker-compose.yml up --build --abort-on-container-exit
+# Run one:  docker compose -f docker/docker-compose.yml run --rm vulnerable
+#           docker compose -f docker/docker-compose.yml run --rm mitigated
